@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Uygulama açılırken (sayfa yüklenene kadar) görünen zemin; sayfanın kendi açık teması ile aynı -->
+    <color name="window_bg">#F4F1EA</color>
+    <color name="ic_launcher_background">#F4F1EA</color>
+</resources>

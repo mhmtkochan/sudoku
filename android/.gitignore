@@ -1,0 +1,11 @@
+# imza anahtarı ve parolası asla paylaşılmaz / depoya girmez
+signing/
+
+# derleme çıktıları ve yerel ayarlar
+.gradle/
+build/
+app/build/
+local.properties
+dist/
+*.iml
+.idea/

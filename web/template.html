@@ -1,0 +1,1263 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Sudoku</title>
+<style>
+:root{
+  --bg:#f4f1ea; --surface:#ffffff; --surface2:#ebe7dd; --text:#1e2430; --muted:#6b7280;
+  --line:#d3cdbf; --line-strong:#2a3140;
+  --accent:#3a5fa8; --accent-ink:#ffffff;
+  --sel:#bcd1c5; --sel-ring:#6f9684; --peer:#e4ede7; --same:#c8dacf;
+  --given:#1e2430; --user:#3a5fa8; --err:#c8442c; --err-bg:#f6dad2;
+  --easy:#2e9e6a; --medium:#d99a12; --hard:#e2622f; --legend:#8a4fd6;
+  --star:#f5b301; --star-off:#d8d3c6; --ink:#c2410c;
+  --shadow:0 8px 28px rgba(20,25,40,.14);
+}
+:root[data-theme="dark"]{
+  --bg:#12151c; --surface:#1b202b; --surface2:#262c3a; --text:#e8ebf2; --muted:#98a1b3;
+  --line:#343c4f; --line-strong:#8892a8;
+  --accent:#9bb4e6; --accent-ink:#0f1626;
+  --sel:#3d554a; --sel-ring:#7fa592; --peer:#222d29; --same:#2f4238;
+  --given:#e8ebf2; --user:#9bb4e6; --err:#ff7a60; --err-bg:#4a2720;
+  --easy:#46c88c; --medium:#f0b43a; --hard:#f48050; --legend:#b184f5;
+  --star:#ffc933; --star-off:#3a4155; --ink:#ffc857;
+  --shadow:0 8px 28px rgba(0,0,0,.5);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#12151c; --surface:#1b202b; --surface2:#262c3a; --text:#e8ebf2; --muted:#98a1b3;
+    --line:#343c4f; --line-strong:#8892a8;
+    --accent:#9bb4e6; --accent-ink:#0f1626;
+    --sel:#3d554a; --sel-ring:#7fa592; --peer:#222d29; --same:#2f4238;
+    --given:#e8ebf2; --user:#9bb4e6; --err:#ff7a60; --err-bg:#4a2720;
+    --easy:#46c88c; --medium:#f0b43a; --hard:#f48050; --legend:#b184f5;
+    --star:#ffc933; --star-off:#3a4155; --ink:#ffc857;
+    --shadow:0 8px 28px rgba(0,0,0,.5);
+  }
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%}
+body{
+  background:var(--bg);color:var(--text);
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  -webkit-user-select:none;user-select:none;overscroll-behavior:none;
+}
+button{font:inherit;color:inherit;cursor:pointer;border:0;background:none}
+svg{display:block}
+.ico{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+[hidden]{display:none!important}
+.app{position:relative;z-index:1;pointer-events:none;max-width:520px;margin:0 auto;min-height:100dvh;padding:0 16px;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}
+.app button,.app .board{pointer-events:auto}
+#ink{position:fixed;left:0;top:0;z-index:0;display:none;pointer-events:none;touch-action:none;transition:opacity .2s,filter .2s}
+body.ingame #ink{display:block}
+body.inking #ink{pointer-events:auto;cursor:crosshair}
+#ink.dim{filter:grayscale(1);opacity:.38}
+.screen{display:none;min-height:100dvh;flex-direction:column}
+.screen.active{display:flex}
+
+/* ---------- buttons ---------- */
+.btn{
+  display:flex;align-items:center;justify-content:center;gap:10px;width:100%;
+  min-height:56px;padding:12px 20px;border-radius:16px;font-weight:700;font-size:18px;
+  background:var(--surface);box-shadow:0 1px 0 var(--line),0 4px 14px rgba(20,25,40,.06);
+  transition:transform .08s, opacity .15s;
+}
+.btn:active:not(:disabled){transform:scale(.98)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);box-shadow:0 6px 18px rgba(0,0,0,.22);box-shadow:0 6px 18px color-mix(in srgb,var(--accent) 40%,transparent)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn small{display:block;font-weight:500;font-size:13px;opacity:.8;margin-top:2px}
+.btn .stack{text-align:center;line-height:1.2}
+.iconbtn{width:44px;height:44px;border-radius:12px;display:grid;place-items:center}
+.iconbtn:active{background:var(--surface2)}
+
+/* ---------- home ---------- */
+#home{justify-content:center;align-items:stretch;gap:28px;padding:32px 0}
+.hero{text-align:center}
+.logo{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;width:132px;margin:0 auto 20px}
+.logo i{aspect-ratio:1;border-radius:10px;display:grid;place-items:center;font-style:normal;font-weight:800;font-size:26px;color:#fff}
+.logo i:nth-child(1),.logo i:nth-child(5),.logo i:nth-child(9){background:var(--easy)}
+.logo i:nth-child(2),.logo i:nth-child(6),.logo i:nth-child(7){background:var(--medium)}
+.logo i:nth-child(3),.logo i:nth-child(4),.logo i:nth-child(8){background:var(--legend)}
+.hero h1{margin:0;font-size:40px;letter-spacing:.14em;font-weight:800}
+.hero p{margin:6px 0 0;color:var(--muted)}
+.menu{display:flex;flex-direction:column;gap:12px}
+.corner{position:absolute;top:calc(8px + env(safe-area-inset-top));right:12px;display:flex;gap:2px}
+.foot{text-align:center;color:var(--muted);font-size:13px}
+.newtag{font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px;background:var(--accent);color:var(--accent-ink);letter-spacing:.02em}
+.hgrp{display:flex;align-items:center;gap:4px}
+
+/* ---------- nasıl oynanır: simülasyon ---------- */
+.tdots{display:flex;gap:6px;justify-content:center;margin:0 0 10px}
+.tdots i{width:8px;height:8px;border-radius:50%;background:var(--line-strong);opacity:.3;transition:transform .2s,opacity .2s}
+.tdots i.done{background:var(--accent);opacity:.55}
+.tdots i.on{background:var(--accent);opacity:1;transform:scale(1.35)}
+.coach{background:var(--surface);border-radius:18px;padding:16px 18px;box-shadow:var(--shadow);margin-bottom:14px;min-height:118px}
+.coach b.t{display:block;font-size:17px;margin-bottom:4px}
+.coach p{margin:0;line-height:1.5}
+.coach .tbtns{display:flex;gap:10px;margin-top:12px}
+.coach .tbtns .btn{min-height:48px;font-size:16px}
+.coach .tbtns [hidden]{display:none}
+.coach.nudge{animation:shake .35s}
+.tstage{display:flex;flex-direction:column;align-items:center;padding-bottom:28px;transition:opacity .3s}
+.tstage.off{opacity:.4;pointer-events:none}
+.tstat{display:flex;justify-content:flex-end;width:min(100%,300px);margin-bottom:8px}
+.tboard{--tb:min(300px,calc(100vw - 64px));position:relative;display:grid;grid-template-columns:repeat(3,1fr);width:var(--tb);aspect-ratio:1;
+  border-radius:14px;overflow:hidden;background:var(--surface);pointer-events:auto}
+/* dış çerçeve hücrelerin üstünde çizilir: vurgulu hücre çerçeveyi örtemez */
+.tboard::after{content:"";position:absolute;inset:0;border:3px solid var(--line-strong);border-radius:14px;pointer-events:none}
+.tboard .cell{font-size:calc(var(--tb)*.22)}
+.tboard .cell:nth-child(3n){border-right:0}
+.tboard .cell:nth-child(n+7){border-bottom:0}
+.tstage .pad{width:min(100%,520px)}
+.tstage .key.tdis,.tstage .tool.tdis{opacity:.3}
+.tools.t3{grid-template-columns:repeat(3,1fr);width:min(100%,360px)}
+.ucmp{width:min(100%,360px)}
+#uComplete{animation:rise .3s;min-height:50px;padding:7px 16px;font-size:17px}
+.tdraw{position:relative;width:min(100%,360px);height:88px;border:2px dashed var(--line-strong);border-radius:14px;margin-top:8px;overflow:hidden}
+.tdraw canvas{width:100%;height:100%;display:block;touch-action:none;pointer-events:auto;cursor:crosshair}
+.tdraw .tdh{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font-weight:600;pointer-events:none}
+/* dokunulması gereken yer yanıp söner */
+.spot{outline:3px solid var(--accent);outline-offset:2px;animation:spot 1.1s ease-in-out infinite}
+.cell.spot{outline-offset:-3px}
+@keyframes spot{0%,100%{outline-color:var(--accent)}50%{outline-color:transparent}}
+@media (prefers-reduced-motion:reduce){.spot{animation:none}}
+
+/* ---------- top bars ---------- */
+.bar{display:flex;align-items:center;gap:8px;padding:10px 0;min-height:64px}
+.bar h2{flex:1;margin:0;font-size:20px;text-align:center}
+.bar .spacer{width:44px}
+
+/* ---------- levels ---------- */
+.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;background:var(--surface2);padding:4px;border-radius:14px}
+.tab{padding:8px 2px;border-radius:10px;font-weight:700;font-size:14px;line-height:1.2;color:var(--muted);text-align:center}
+.tab small{display:block;font-weight:500;font-size:11px;margin-top:2px}
+.tab.on{background:var(--surface);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.12)}
+.tab.on b{color:var(--c)}
+.grid30{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:18px 0 24px}
+.lvl{
+  position:relative;aspect-ratio:1/1.3;border-radius:14px;background:var(--surface);
+  border:2px solid transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+  font-weight:800;font-size:19px;box-shadow:0 1px 0 var(--line);
+}
+.lvl:active:not(:disabled){transform:scale(.96)}
+.lvl.locked{background:var(--surface2);color:var(--muted);cursor:not-allowed;box-shadow:none}
+.lvl.locked .ico{width:20px;height:20px;opacity:.8}
+.lvl.done{border-color:var(--c);border-color:color-mix(in srgb,var(--c) 55%,transparent)}
+.lvl.cur{border-color:var(--c);box-shadow:0 0 0 3px rgba(0,0,0,.12);box-shadow:0 0 0 3px color-mix(in srgb,var(--c) 25%,transparent)}
+.lvl .dot{position:absolute;top:6px;right:6px;width:8px;height:8px;border-radius:50%;background:var(--c)}
+.stars{display:flex;gap:1px}
+.stars svg{width:11px;height:11px}
+.st{fill:var(--star);stroke:var(--star);stroke-width:1.5;stroke-linejoin:round}
+.st.off{fill:var(--star-off);stroke:var(--star-off)}
+
+/* ---------- game ---------- */
+:root{--bs:max(270px,min(calc(100vw - 32px),calc(100dvh - 372px),480px))}
+.gbar{display:grid;grid-template-columns:44px 1fr auto;align-items:center;gap:8px;padding:10px 0 4px}
+.gbar h2{margin:0;font-size:18px;text-align:center}
+.pill{padding:6px 12px;border-radius:999px;font-weight:800;font-size:14px;background:var(--surface);box-shadow:0 1px 0 var(--line);white-space:nowrap}
+.pill.bad{color:var(--err)}
+.pill.warn{background:var(--err-bg);color:var(--err)}
+.sub{display:flex;align-items:center;justify-content:space-between;padding:4px 2px 10px;gap:8px}
+.timer{display:flex;align-items:center;gap:4px;font-variant-numeric:tabular-nums;font-weight:700;font-size:17px}
+.chip{padding:4px 12px;border-radius:999px;font-weight:700;font-size:13px;color:#fff;background:var(--c)}
+.boardwrap{position:relative;width:var(--bs);margin:0 auto}
+.board{
+  display:grid;grid-template-columns:repeat(9,1fr);width:100%;aspect-ratio:1;
+  border:3.2px solid var(--line-strong);border-radius:10px;overflow:hidden;background:var(--surface);
+}
+.cell{
+  position:relative;display:grid;place-items:center;border-right:1.5px solid var(--line);border-bottom:1.5px solid var(--line);
+  font-size:calc(var(--bs)*.062);font-weight:700;cursor:pointer;min-width:0;
+}
+.cell.c3{border-right:3.2px solid var(--line-strong)}
+.cell.r3{border-bottom:3.2px solid var(--line-strong)}
+/* tarayıcı çizgi kalınlığını fiziksel piksele yuvarlar; düşük çözünürlükte de fark görünsün diye kademeli */
+@media (max-resolution:1.74dppx){.cell{border-right-width:1.4px;border-bottom-width:1.4px}}
+@media (max-resolution:1.39dppx){.cell{border-right-width:1.6px;border-bottom-width:1.6px}}
+@media (max-resolution:1.09dppx){.cell{border-right-width:2px;border-bottom-width:2px}}
+.cell.c8{border-right:0}
+.cell.r8{border-bottom:0}
+.cell.peer{background:var(--peer)}
+.cell.same{background:var(--same)}
+.cell.sel{background:var(--sel);box-shadow:inset 0 0 0 2px var(--sel-ring)}
+.cell.given{color:var(--given);font-weight:700}
+.cell.user{color:var(--user)}
+.cell.err{color:var(--err);background:var(--err-bg)}
+.cell.conflict{background:var(--err-bg);background:color-mix(in srgb,var(--err-bg) 75%,var(--surface))}
+.cell.shake{animation:shake .35s}
+.dock{display:flex;flex-direction:column;gap:8px;width:min(100%,520px);margin:0 auto 20px}
+.inkbar{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;background:var(--surface2);padding:4px;border-radius:14px}
+.inkbar button{display:flex;align-items:center;justify-content:center;gap:6px;padding:8px 4px;border-radius:10px;font-weight:700;font-size:14px;color:var(--muted)}
+.inkbar button .ico{width:18px;height:18px}
+.inkbar button.on{background:var(--surface);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.14)}
+.inkbar button.on .ico{color:var(--ink)}
+#btnComplete{animation:rise .3s;min-height:50px;padding:7px 16px;font-size:17px}
+.cmpwrap{position:relative}
+.bubble{position:absolute;left:50%;top:calc(100% + 12px);transform:translateX(-50%);z-index:5;width:max-content;max-width:100%;
+  padding:10px 16px;border-radius:14px;background:var(--text);color:var(--bg);font-size:14px;font-weight:600;line-height:1.35;text-align:center;
+  box-shadow:var(--shadow);pointer-events:none;animation:fade .3s}
+.bubble::before{content:"";position:absolute;left:50%;top:-6px;width:12px;height:12px;background:inherit;border-radius:2px;transform:translateX(-50%) rotate(45deg)}
+.fly{position:fixed;z-index:40;display:grid;place-items:center;pointer-events:none;font-weight:700;color:var(--user);
+  background:var(--surface);border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,.28)}
+.lvl .meta{font-size:10px;font-weight:600;color:var(--muted);line-height:1.15;white-space:nowrap}
+.board,.pad,.tools{transition:opacity .2s,filter .2s}
+#game.paused .board,#game.paused .pad,#game.paused .tools{filter:grayscale(1);opacity:.38;pointer-events:none}
+#game.paused .pad button,#game.paused .tools button,#game.paused .dock button,#game.paused .board{pointer-events:none}
+#game.paused #gPause{color:var(--accent);background:var(--surface2)}
+.pad{display:grid;grid-template-columns:repeat(9,1fr);gap:4px;margin:14px auto 0;width:min(100%,520px)}
+.key{
+  height:54px;border-radius:12px;background:var(--surface);box-shadow:0 1px 0 var(--line);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:24px;font-weight:700;color:var(--user);line-height:1
+}
+.key small{font-size:10px;font-weight:600;color:var(--muted);margin-top:3px;height:11px}
+.key:active:not(:disabled){background:var(--sel)}
+.key:disabled{opacity:.28;cursor:default}
+.tools{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:12px auto 18px;width:min(100%,520px)}
+.tool{
+  display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 2px;border-radius:12px;
+  font-size:12px;font-weight:600;color:var(--text);position:relative
+}
+.tool:active:not(:disabled){background:var(--surface2)}
+.tool:disabled{opacity:.35;cursor:default}
+.tool.on .ico{color:var(--accent)}
+.badge{position:absolute;top:-6px;left:calc(50% + 6px);min-width:26px;padding:1px 6px;border-radius:999px;font-size:11px;font-weight:800;
+  background:var(--surface2);color:var(--muted);text-align:center}
+.tool.on .badge{background:var(--accent);color:var(--accent-ink)}
+
+/* ---------- modal / toast ---------- */
+.modal{position:fixed;inset:0;background:rgba(10,14,24,.55);display:grid;place-items:center;padding:20px;z-index:50;animation:fade .2s}
+.modal[hidden]{display:none}
+.card{background:var(--surface);width:min(100%,380px);border-radius:24px;padding:28px 22px 22px;text-align:center;box-shadow:var(--shadow);animation:pop .25s}
+.card h3{margin:6px 0 4px;font-size:24px}
+.card p{margin:0 0 14px;color:var(--muted);line-height:1.45}
+.card .btns{display:flex;flex-direction:column;gap:10px;margin-top:16px}
+.bigstars{display:flex;justify-content:center;gap:8px;margin:8px 0 10px}
+.bigstars svg{width:58px;height:58px;opacity:0;animation:starin .5s forwards}
+.bigstars svg:nth-child(1){animation-delay:.15s}
+.bigstars svg:nth-child(2){animation-delay:.4s;margin-top:-10px}
+.bigstars svg:nth-child(3){animation-delay:.65s}
+.facts{display:flex;justify-content:center;gap:18px;margin:6px 0 0;font-size:14px;color:var(--muted)}
+.facts b{display:block;font-size:18px;color:var(--text)}
+.bigicon{width:64px;height:64px;border-radius:50%;margin:0 auto 6px;display:grid;place-items:center;background:var(--err-bg);color:var(--err)}
+.bigicon .ico{width:32px;height:32px}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;background:var(--surface2);padding:4px;border-radius:12px;margin-top:6px}
+.seg button{padding:10px 4px;border-radius:9px;font-weight:700;font-size:14px;color:var(--muted)}
+.seg button.on{background:var(--surface);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.12)}
+.lab{text-align:left;font-weight:700;margin-top:6px}
+.hbtns{display:flex;gap:2px}
+.pals{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
+.pal{position:relative;display:flex;flex-direction:column;align-items:center;gap:10px;padding:14px 10px 12px;border-radius:14px;background:var(--surface2);border:2px solid transparent;text-align:center;transition:border-color .15s,background .15s}
+.pal.on{border-color:var(--accent)}
+.pal .chk{display:none;position:absolute;top:6px;right:6px;width:20px;height:20px;border-radius:50%;background:var(--accent);color:var(--accent-ink);place-items:center}
+.pal.on .chk{display:grid}
+.pal .chk svg{width:12px;height:12px;stroke-width:3.2}
+.mg{display:grid;grid-template-columns:repeat(3,1fr);width:96px;border:2px solid var(--line-strong);border-radius:8px;overflow:hidden}
+.mg i{font-style:normal;display:grid;place-items:center;height:30px;font-size:16px;line-height:1;border-right:1px solid var(--line);border-bottom:1px solid var(--line)}
+.mg i:nth-child(3n){border-right:0}
+.mg i:nth-last-child(-n+3){border-bottom:0}
+.pal .pn{font-weight:700;font-size:14px}
+.modal.soft{background:rgba(10,14,24,.22)}
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translate(-50%,20px);background:var(--text);color:var(--bg);
+  padding:10px 16px;border-radius:12px;font-weight:600;font-size:14px;opacity:0;pointer-events:none;transition:.2s;z-index:60;max-width:90vw;text-align:center}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+/* bilgi balonu: tepede çıkar, 2 sn sonra yavaşça kaybolur */
+.infobubble{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 44px);transform:translateX(-50%);z-index:70;
+  width:max-content;max-width:min(340px,calc(100vw - 32px));padding:12px 18px;border-radius:16px;
+  background:var(--surface);color:var(--text);border:1px solid var(--line);box-shadow:var(--shadow);
+  font-size:14px;font-weight:600;line-height:1.4;text-align:center;pointer-events:none;
+  opacity:0;visibility:hidden;transition:opacity 1.4s ease,visibility 0s 1.4s}
+.infobubble.on{opacity:1;visibility:visible;transition:opacity .25s ease}
+.infobubble::after{content:"";position:absolute;left:50%;bottom:-7px;width:12px;height:12px;background:var(--surface);
+  border-right:1px solid var(--line);border-bottom:1px solid var(--line);border-radius:0 0 3px 0;transform:translateX(-50%) rotate(45deg)}
+
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-4px)}40%{transform:translateX(4px)}60%{transform:translateX(-3px)}80%{transform:translateX(3px)}}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+@keyframes rise{from{transform:translateY(10px);opacity:0}to{transform:none;opacity:1}}
+@keyframes pop{from{transform:scale(.9);opacity:0}to{transform:scale(1);opacity:1}}
+@keyframes starin{0%{transform:scale(.2) rotate(-40deg);opacity:0}70%{transform:scale(1.2) rotate(8deg);opacity:1}100%{transform:scale(1) rotate(0);opacity:1}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.bigstars svg{opacity:1}}
+@media (max-height:700px){.key{height:46px}.tool{padding:4px 2px}}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ANA MENÜ -->
+  <section id="home" class="screen active">
+    <div class="corner">
+      <button class="iconbtn palbtn"></button>
+      <button class="iconbtn themebtn"></button>
+      <button class="iconbtn" id="btnSettings" aria-label="Ayarlar"><svg class="ico" viewBox="0 0 24 24"><use href="#i-gear"/></svg></button>
+    </div>
+    <div class="hero">
+      <div class="logo"><i>1</i><i>2</i><i>3</i><i>4</i><i>5</i><i>6</i><i>7</i><i>8</i><i>9</i></div>
+      <h1>SUDOKU</h1>
+      <p>120 bölüm · 4 seviye</p>
+    </div>
+    <div class="menu">
+      <button class="btn primary" id="btnNew">Yeni Oyun</button>
+      <button class="btn" id="btnContinue"><span class="stack">Devam Et<small id="contSub"></small></span></button>
+      <button class="btn" id="btnAll">Tüm Bölümler</button>
+      <button class="btn" id="btnHelp">Nasıl Oynanır<span class="newtag" id="helpNew" hidden>Yeni</span></button>
+    </div>
+    <div class="foot" id="homeFoot"></div>
+  </section>
+
+  <!-- TÜM BÖLÜMLER -->
+  <section id="levels" class="screen">
+    <div class="bar">
+      <button class="iconbtn" id="lvBack" aria-label="Geri"><svg class="ico" viewBox="0 0 24 24"><use href="#i-back"/></svg></button>
+      <span class="spacer"></span>
+      <h2>Tüm Bölümler</h2>
+      <div class="hbtns"><button class="iconbtn palbtn"></button><button class="iconbtn themebtn"></button></div>
+    </div>
+    <div class="tabs" id="tabs"></div>
+    <div class="grid30" id="grid30"></div>
+  </section>
+
+  <!-- NASIL OYNANIR: tıklayarak öğreten simülasyon -->
+  <section id="help" class="screen">
+    <div class="bar">
+      <button class="iconbtn" id="hlBack" aria-label="Geri"><svg class="ico" viewBox="0 0 24 24"><use href="#i-back"/></svg></button>
+      <h2>Nasıl Oynanır</h2><span class="spacer"></span>
+    </div>
+    <div class="tdots" id="uDots" aria-hidden="true"></div>
+    <div class="coach" id="uCoach" role="status" aria-live="polite">
+      <b class="t" id="uTitle"></b>
+      <p id="uText"></p>
+      <div class="tbtns">
+        <button class="btn primary" id="uNext" hidden>Başla</button>
+        <button class="btn" id="uAgain" hidden>Baştan dene</button>
+      </div>
+    </div>
+    <div class="tstage" id="uStage">
+      <div class="tstat"><span class="pill" id="uMist">Hata 0/3</span></div>
+      <div class="tboard" id="uBoard"></div>
+      <div class="pad" id="uPad"></div>
+      <div class="tools t3">
+        <button class="tool" id="uErase"><svg class="ico" viewBox="0 0 24 24"><use href="#i-erase"/></svg>Sil</button>
+        <button class="tool" id="uNotes"><svg class="ico" viewBox="0 0 24 24"><use href="#i-pencil"/></svg>Not<span class="badge" id="uBN">Kapalı</span></button>
+        <button class="tool" id="uHint"><svg class="ico" viewBox="0 0 24 24"><use href="#i-bulb"/></svg>İpucu<span class="badge" id="uBH">0/3</span></button>
+      </div>
+      <div class="cmpwrap ucmp" id="uCmpWrap" hidden>
+        <button class="btn primary" id="uComplete"><svg class="ico" viewBox="0 0 24 24"><use href="#i-spark"/></svg>Tamamla</button>
+      </div>
+      <div class="tdraw" id="uDraw" hidden><canvas id="uCanvas"></canvas><span class="tdh">Buraya çiz</span></div>
+    </div>
+  </section>
+
+<!-- OYUN -->
+  <section id="game" class="screen">
+    <div class="gbar">
+      <button class="iconbtn" id="gBack" aria-label="Geri"><svg class="ico" viewBox="0 0 24 24"><use href="#i-back"/></svg></button>
+      <h2 id="gTitle"></h2>
+      <div class="hgrp">
+        <button class="iconbtn" id="gHelp" aria-label="Nasıl oynanır"><svg class="ico" viewBox="0 0 24 24"><use href="#i-help"/></svg></button>
+        <span class="pill" id="gMist" aria-label="Hata"></span>
+      </div>
+    </div>
+    <div class="sub">
+      <div class="timer"><span id="gTime">00:00</span>
+        <button class="iconbtn" id="gPause" aria-label="Duraklat" style="width:36px;height:36px"><svg class="ico" viewBox="0 0 24 24" id="gPauseIco"><use href="#i-pause"/></svg></button>
+      </div>
+      <div style="display:flex;align-items:center;gap:4px">
+        <button class="iconbtn palbtn" style="width:36px;height:36px"></button>
+        <button class="iconbtn themebtn" style="width:36px;height:36px"></button>
+        <span class="chip" id="gChip"></span>
+      </div>
+    </div>
+    <div class="boardwrap">
+      <div class="board" id="board"></div>
+    </div>
+    <div class="pad" id="pad"></div>
+    <div class="tools">
+      <button class="tool" id="tUndo"><svg class="ico" viewBox="0 0 24 24"><use href="#i-undo"/></svg>Geri al</button>
+     <button class="tool" id="tErase"><svg class="ico" viewBox="0 0 24 24"><use href="#i-erase"/></svg>Sil</button>
+      <button class="tool" id="tNotes"><svg class="ico" viewBox="0 0 24 24"><use href="#i-pencil"/></svg>Not<span class="badge" id="bNotes">Kapalı</span></button>
+      <button class="tool" id="tHint"><svg class="ico" viewBox="0 0 24 24"><use href="#i-bulb"/></svg>İpucu<span class="badge" id="bHint">0/3</span></button>
+    </div>
+    <div class="dock">
+      <div class="inkbar" id="inkBar" hidden>
+        <button id="inkPen" class="on"><svg class="ico" viewBox="0 0 24 24"><use href="#i-pencil"/></svg>Kalem</button>
+        <button id="inkEraser"><svg class="ico" viewBox="0 0 24 24"><use href="#i-erase"/></svg>Silgi</button>
+        <button id="inkClear"><svg class="ico" viewBox="0 0 24 24"><use href="#i-trash"/></svg>Temizle</button>
+      </div>
+      <div class="cmpwrap" id="cmpWrap" hidden>
+        <button class="btn primary" id="btnComplete"><svg class="ico" viewBox="0 0 24 24"><use href="#i-spark"/></svg>Tamamla</button>
+        <div class="bubble" id="cmpBubble" role="status" hidden>Geriye kalan değerleri otomatik tamamla</div>
+      </div>
+    </div>
+  </section>
+</div>
+<canvas id="ink"></canvas>
+
+<div class="modal" id="modal" hidden><div class="card" role="dialog" aria-modal="true" id="mCard"></div></div>
+<div class="toast" id="toast" role="status"></div>
+<div class="infobubble" id="infoBubble" role="status" aria-live="polite"></div>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <g id="i-back"><path d="M15 18l-6-6 6-6"/></g>
+    <g id="i-undo"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 010 12h-3"/></g>
+    <g id="i-redo"><path d="M15 14l5-5-5-5"/><path d="M20 9H10a6 6 0 000 12h3"/></g>
+    <g id="i-erase"><path d="M20 20H9L3.6 14.6a2 2 0 010-2.8l8.2-8.2a2 2 0 012.8 0l5.8 5.8a2 2 0 010 2.8L13 20"/><path d="M7 11l6 6"/></g>
+    <g id="i-pencil"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></g>
+    <g id="i-bulb"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 00-4 12.7c.6.5 1 1.2 1 2V17h6v-.3c0-.8.4-1.5 1-2A7 7 0 0012 2z"/></g>
+    <g id="i-pause"><path d="M8 5v14"/><path d="M16 5v14"/></g>
+    <g id="i-play"><path d="M7 4l13 8-13 8z"/></g>
+    <g id="i-lock"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></g>
+    <g id="i-gear"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></g>
+    <g id="i-sun"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></g>
+    <g id="i-moon"><path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/></g>
+    <g id="i-trash"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M6 6l1 14h10l1-14"/></g>
+    <g id="i-spark"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 3v4M17 5h4"/></g>
+    <g id="i-palette"><path d="M12 3a9 9 0 100 18c1.1 0 1.6-.8 1.3-1.6-.3-.8.1-1.4 1.1-1.4H16a5 5 0 005-5c0-5.5-4-10-9-10z"/><circle cx="7.5" cy="11.5" r="1"/><circle cx="10" cy="7.5" r="1"/><circle cx="15" cy="7.5" r="1"/></g>
+    <g id="i-check"><path d="M5 13l4 4L19 7"/></g>
+    <g id="i-help"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></g>
+    <g id="i-x"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></g>
+  </defs>
+</svg>
+
+<script>
+"use strict";
+const PUZZLES = /*PUZZLES_JSON*/;
+
+/* ================= veri ================= */
+const DIFFS = [
+  {key:"easy",      name:"Kolay",    color:"var(--easy)",   maxMistakes:3},
+  {key:"medium",    name:"Orta",     color:"var(--medium)", maxMistakes:4},
+  {key:"hard",      name:"Zor",      color:"var(--hard)",   maxMistakes:5},
+  {key:"legendary", name:"Efsanevi", color:"var(--legend)", maxMistakes:6},
+];
+const MAX_HINTS = 3;
+const LEVELS = [];
+DIFFS.forEach((d, di) => PUZZLES[d.key].forEach(p => LEVELS.push({n: LEVELS.length + 1, di, puzzle: p.puzzle, solution: p.solution})));
+const TOTAL = LEVELS.length;
+
+const PEERS = [];
+for (let i = 0; i < 81; i++) {
+  const r = Math.floor(i / 9), c = i % 9, s = new Set();
+  for (let k = 0; k < 9; k++) { s.add(r * 9 + k); s.add(k * 9 + c); }
+  const br = r - r % 3, bc = c - c % 3;
+  for (let a = 0; a < 3; a++) for (let b = 0; b < 3; b++) s.add((br + a) * 9 + bc + b);
+  s.delete(i);
+  PEERS.push([...s]);
+}
+
+/* ================= kayıt ================= */
+const KEY = "sudoku-bolumler-v1", TKEY = "sudoku-tema";
+function freshSave() { return {v: 1, completed: {}, games: {}}; }
+function loadSave() {
+  try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && s.v === 1) return s; } catch (e) {}
+  return freshSave();
+}
+let save = loadSave();
+function persist() { try { localStorage.setItem(KEY, JSON.stringify(save)); } catch (e) {} }
+function furthest() { let n = 1; while (n < TOTAL && save.completed[n]) n++; return n; }
+function isUnlocked(n) { return n <= furthest(); }
+function hasProgress() { return Object.keys(save.completed).length > 0 || Object.keys(save.games).length > 0; }
+
+/* ================= yardımcılar ================= */
+const $ = id => document.getElementById(id);
+const fmt = s => String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0");
+const useIcon = id => `<svg class="ico" viewBox="0 0 24 24"><use href="#${id}"/></svg>`;
+const starSvg = (on, cls = "") => `<svg viewBox="0 0 24 24" class="${cls}"><polygon class="st${on ? "" : " off"}" points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26"/></svg>`;
+let toastTimer;
+function toast(msg) {
+  const t = $("toast"); t.textContent = msg; t.classList.add("on");
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("on"), 1800);
+}
+let infoTimer;
+function showInfo(msg, ms = 2000) {   // ms sonra yavaşça kaybolur (kaybolma süresi CSS'te)
+  const b = $("infoBubble"); b.textContent = msg; b.classList.add("on");
+  clearTimeout(infoTimer); infoTimer = setTimeout(() => b.classList.remove("on"), ms);
+}
+let current = "home";
+function show(name) {
+  current = name;
+  document.querySelectorAll(".screen").forEach(s => s.classList.toggle("active", s.id === name));
+  document.body.classList.toggle("ingame", name === "game");
+  window.scrollTo(0, 0);
+  if (typeof redrawInk === "function") redrawInk();
+}
+
+/* ---- modal ---- */
+function modalOpen() { return !$("modal").hidden; }
+function showModal(html, buttons) {
+  const card = $("mCard");
+  card.innerHTML = html + `<div class="btns"></div>`;
+  const box = card.querySelector(".btns");
+  buttons.forEach(b => {
+    const el = document.createElement("button");
+    el.className = "btn" + (b.primary ? " primary" : "");
+    el.textContent = b.label;
+    el.onclick = () => { closeModal(); b.onClick && b.onClick(); };
+    box.appendChild(el);
+  });
+  $("modal").hidden = false;
+}
+function closeModal() { $("modal").hidden = true; $("modal").classList.remove("soft"); }
+$("modal").addEventListener("click", e => { if (e.target === $("modal") && $("modal").classList.contains("soft")) closeModal(); });
+
+/* ================= ana menü ================= */
+function renderHome() {
+  const f = furthest(), has = hasProgress();
+  $("btnContinue").disabled = !has;
+  $("contSub").textContent = has ? `Bölüm ${f} · ${DIFFS[LEVELS[f - 1].di].name}` : "Kayıtlı oyun yok";
+  const done = Object.keys(save.completed).length;
+  $("homeFoot").textContent = done ? `${done} / ${TOTAL} bölüm tamamlandı` : "";
+  $("helpNew").hidden = helpSeen();   // yardım henüz açılmadıysa butonda "Yeni" etiketi
+}
+$("btnNew").onclick = () => {
+  const go = () => { save = freshSave(); persist(); startLevel(1, "home"); };
+  if (hasProgress()) {
+    showModal(`<h3>Yeni oyun?</h3><p>Mevcut ilerlemen silinecek ve oyun 1. bölümden başlayacak.</p>`,
+      [{label: "Evet, sıfırla", primary: true, onClick: go}, {label: "Vazgeç"}]);
+  } else go();
+};
+$("btnContinue").onclick = () => startLevel(furthest(), "home");
+$("btnAll").onclick = () => openLevels();
+$("btnSettings").onclick = openSettings;
+
+/* ================= nasıl oynanır: tıklayarak öğreten küçük simülasyon ================= */
+const HKEY = "sudoku-yardim";
+const helpSeen = () => { try { return localStorage.getItem(HKEY) === "1"; } catch (e) { return false; } };
+let helpFrom = "home", U = null, uRun = 0;
+const U_SOL = [5, 3, 4, 6, 7, 2, 1, 9, 8];        // tek bir 3×3 kutunun çözümü
+const U_GIVEN = [1, 1, 0, 1, 0, 0, 1, 1, 0];      // 1 = hazır rakam, 0 = boş hücre
+const uCell = i => $("uBoard").children[i];
+const uKey = d => $("uPad").children[d - 1];
+const uStep = () => U_STEPS[U.step];
+
+// Her adım: neye dokunulabilir (cells / keys / tools / complete), neyin etrafında yanıp sönen çerçeve olur (spot)
+// ve ne zaman biter (done). Adım bitince kısa bir bekleyişten sonra bir sonrakine geçilir.
+const U_STEPS = [
+  {title: "Küçük bir kutuyla öğrenelim",
+   text: () => "Sudoku'da her 3×3 kutuda 1'den 9'a kadar her rakam yalnızca bir kez bulunur. Gerçek oyunda böyle 9 kutu var, kural hepsi için aynı. Şimdi tek bir kutuyu birlikte dolduralım."},
+  {title: "Bir hücre seç",
+   text: () => "Yanıp sönen boş hücreye dokun.",
+   cells: [2], spot: () => uCell(2), done: () => U.sel === 2},
+  {title: "Rakamı yaz",
+   text: () => "Seçtiğin hücre çerçeveli, aynı satır ve sütun hafif tonlu. Kutuda <b>4</b> eksik. Alttan 4'e bas.",
+   keys: [4], spot: () => uKey(4), done: () => U.vals[2] === 4},
+  {title: "Şimdi bilerek yanlış yapalım",
+   text: () => "Hata nasıl görünüyor bakalım. Yanıp sönen hücreyi seç.",
+   cells: [4], spot: () => uCell(4), done: () => U.sel === 4},
+  {title: "Yanlış bir rakam yaz",
+   text: () => "Bu hücreye <b>9</b> yaz. Kutuda zaten bir 9 var.",
+   keys: [9], spot: () => uKey(9), done: () => U.wrong[4] === 9},
+  {title: "Hata sayıldı",
+   text: () => `Yanlış rakam anında hata sayılır (sağ üstte <b>Hata ${U.mist}/${DIFFS[0].maxMistakes}</b>) ve sen silene kadar kırmızı kalır. Çakışan 9 da kırmızı tonlandı. Silmek için <b>Sil</b>'e bas.`,
+   tools: ["erase"], spot: () => $("uErase"), done: () => U.wrong[4] === undefined},
+  {title: "Doğrusunu yaz",
+   text: () => "Kutuda <b>7</b> eksik. 7'ye bas.",
+   keys: [7], spot: () => uKey(7), done: () => U.vals[4] === 7},
+  {title: "İpucu al",
+   text: () => `Takıldığında <b>İpucu</b> seçili hücreyi senin yerine doldurur. Her bölümde ${MAX_HINTS} hakkın var. Önce yanıp sönen hücreyi seç, sonra İpucu'na bas.`,
+   cells: [5], tools: ["hint"], spot: () => U.sel === 5 ? $("uHint") : uCell(5), done: () => U.vals[5] === 2},
+  {title: "Not al",
+   text: () => "<b>Not</b>'a basınca tahtanın dışındaki boş alanlara parmağınla çizebilirsin. Not'a bas, sonra aşağıda açılan alana bir şey çiz.",
+   tools: ["notes"], spot: () => U.notes ? $("uDraw") : $("uNotes"), done: () => U.drew},
+  {title: "Son hücre: Tamamla",
+   text: () => "Son birkaç hücre kalınca <b>Tamamla</b> çıkar. Bas ve rakamın ekranın dışından gelip yerine oturmasını izle.",
+   complete: true, spot: () => $("uComplete"), done: () => U.vals[8] === 8},
+  {title: "Kutu tamamlandı!",
+   text: () => `Gerçek oyunda aynı kural 9×9'luk tahtanın her satırı, sütunu ve 3×3 kutusu için geçerli. Hata hakkın seviyeye göre ${DIFFS[0].maxMistakes} ile ${DIFFS[DIFFS.length - 1].maxMistakes} arasında. Tahtanın dışında boş bir yere dokunursan seçim kalkar ve tahtaya genel olarak bakabilirsin.`},
+];
+
+function uReset() {
+  uRun++;
+  U = {run: uRun, step: 0, vals: U_SOL.map((s, i) => U_GIVEN[i] ? s : 0), wrong: {}, sel: -1, mist: 0, hints: 0, notes: false, drew: false, ink: 0, busy: false, shake: -1};
+  uCtx.clearRect(0, 0, uCv.width, uCv.height);
+}
+function uRender() {
+  const st = uStep(), last = U.step === U_STEPS.length - 1, intro = U.step === 0;
+  $("uDots").innerHTML = U_STEPS.map((_, i) => `<i class="${i < U.step ? "done" : i === U.step ? "on" : ""}"></i>`).join("");
+  $("uTitle").textContent = st.title; $("uText").innerHTML = st.text();
+  $("uNext").hidden = !(intro || last); $("uNext").textContent = intro ? "Başla" : "Anladım";
+  $("uAgain").hidden = !last;
+  $("uStage").classList.toggle("off", intro);
+  const mist = $("uMist"); mist.textContent = `Hata ${U.mist}/${DIFFS[0].maxMistakes}`; mist.className = "pill" + (U.mist ? " bad" : "");
+
+  // tahta: gerçek oyundaki hücre stilleri (seçili / aynı rakam / satır-sütun / hata / çakışma)
+  const sel = U.sel, selVal = sel < 0 ? 0 : (U.wrong[sel] || U.vals[sel]);
+  const conflicts = new Set();
+  for (const [wi, wd] of Object.entries(U.wrong)) U.vals.forEach((v, p) => { if (p !== +wi && v === wd) conflicts.add(p); });
+  const spot = st.spot ? st.spot() : null;
+  for (let i = 0; i < 9; i++) {
+    const el = uCell(i), wr = U.wrong[i] !== undefined, v = wr ? U.wrong[i] : U.vals[i];
+    let cls = "cell";
+    if (conflicts.has(i)) cls += " conflict";
+    if (i === sel) cls += " sel";
+    else if (selVal && v === selVal) cls += " same";
+    else if (sel >= 0 && (Math.floor(i / 3) === Math.floor(sel / 3) || i % 3 === sel % 3)) cls += " peer";
+    if (U_GIVEN[i]) cls += " given"; else if (wr) cls += " err"; else if (v) cls += " user";
+    if (i === U.shake) cls += " shake";
+    if (el === spot) cls += " spot";
+    el.className = cls; el.textContent = v || "";
+    el.setAttribute("aria-label", `Satır ${Math.floor(i / 3) + 1}, sütun ${i % 3 + 1}, ${v ? v + (wr ? ", hatalı" : "") : "boş"}`);
+  }
+  for (let d = 1; d <= 9; d++) { const k = uKey(d); k.classList.toggle("tdis", !(st.keys && st.keys.includes(d))); k.classList.toggle("spot", k === spot); }
+  [["uErase", "erase"], ["uNotes", "notes"], ["uHint", "hint"]].forEach(([id, t]) => {
+    const b = $(id); b.classList.toggle("tdis", !(st.tools && st.tools.includes(t))); b.classList.toggle("spot", b === spot);
+  });
+  $("uNotes").classList.toggle("on", U.notes); $("uBN").textContent = U.notes ? "Açık" : "Kapalı";
+  $("uBH").textContent = `${U.hints}/${MAX_HINTS}`;
+  const draw = $("uDraw"); draw.hidden = !U.notes; draw.classList.toggle("spot", draw === spot);
+  if (!draw.hidden) uSizeCanvas();
+  $("uCmpWrap").hidden = !st.complete; $("uComplete").classList.toggle("spot", $("uComplete") === spot);
+}
+function uNudge() { const c = $("uCoach"); c.classList.remove("nudge"); void c.offsetWidth; c.classList.add("nudge"); }
+// Adım bittiyse kısa bir süre sonuç görünsün, sonra bir sonraki adıma geç
+function uCheck() {
+  const st = uStep();
+  if (!st.done || !st.done()) return;
+  const run = U.run; U.busy = true;
+  setTimeout(() => {
+    if (!U || U.run !== run) return;
+    U.busy = false; U.step++; U.notes = false; uRender();
+  }, 650);
+}
+
+$("uBoard").onclick = e => {
+  const c = e.target.closest(".cell"); if (!c || !U || U.busy) return;
+  const i = +c.dataset.i, st = uStep();
+  if (!(st.cells && st.cells.includes(i))) { uNudge(); return; }
+  U.sel = i; uRender(); uCheck();
+};
+$("uPad").onclick = e => {
+  const k = e.target.closest(".key"); if (!k || !U || U.busy) return;
+  const d = +k.dataset.d, st = uStep(), i = U.sel;
+  if (!(st.keys && st.keys.includes(d)) || i < 0 || U_GIVEN[i]) { uNudge(); return; }
+  if (d === U_SOL[i]) { U.vals[i] = d; delete U.wrong[i]; }
+  else { U.wrong[i] = d; U.mist++; U.shake = i; }
+  uRender(); uCheck();
+};
+$("uErase").onclick = () => {
+  if (!U || U.busy) return;
+  const st = uStep(), i = U.sel;
+  if (!(st.tools && st.tools.includes("erase")) || i < 0 || U.wrong[i] === undefined) { uNudge(); return; }
+  delete U.wrong[i]; uRender(); uCheck();
+};
+$("uHint").onclick = () => {
+  if (!U || U.busy) return;
+  const st = uStep(), i = U.sel;
+  if (!(st.tools && st.tools.includes("hint")) || i < 0 || U_GIVEN[i] || U.vals[i] === U_SOL[i]) { uNudge(); return; }
+  U.vals[i] = U_SOL[i]; delete U.wrong[i]; U.hints++; uRender(); uCheck();
+};
+$("uNotes").onclick = () => {
+  if (!U || U.busy) return;
+  if (!(uStep().tools || []).includes("notes")) { uNudge(); return; }
+  U.notes = !U.notes; uRender();
+  if (U.notes) $("uDraw").scrollIntoView({block: "nearest", behavior: "smooth"});   // küçük ekranda çizim alanı görünür olsun
+};
+$("uComplete").onclick = () => {
+  if (!U || U.busy || !uStep().complete) return;
+  const run = U.run, cells = U_SOL.map((_, i) => i).filter(i => !U_GIVEN[i] && U.vals[i] !== U_SOL[i]);
+  U.busy = true; let landed = 0;
+  cells.forEach((i, k) => setTimeout(() => {
+    if (!U || U.run !== run) return;
+    flyIn(i, U_SOL[i], () => {
+      if (!U || U.run !== run) return;
+      U.vals[i] = U_SOL[i]; landed++;
+      if (landed === cells.length) U.busy = false;
+      uRender(); if (landed === cells.length) uCheck();
+    }, $("uBoard"));
+  }, k * 170));
+};
+$("uNext").onclick = () => { if (!U) return; if (U.step === 0) { U.step = 1; uRender(); } else closeHelp(); };
+$("uAgain").onclick = () => { uReset(); uRender(); };
+
+// not alanı: Not adımında gerçekten çizilir
+const uCv = $("uCanvas"), uCtx = uCv.getContext("2d");
+function uSizeCanvas() {
+  const r = uCv.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+  if (!r.width) return;
+  const w = Math.round(r.width * dpr), h = Math.round(r.height * dpr);
+  if (uCv.width !== w || uCv.height !== h) { uCv.width = w; uCv.height = h; }
+  uCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+let uPen = null;
+const uPos = e => { const r = uCv.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
+function uStroke(a, b) {
+  uCtx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue("--ink").trim() || "#c2410c";
+  uCtx.lineWidth = 3.2; uCtx.lineCap = "round"; uCtx.lineJoin = "round";
+  uCtx.beginPath(); uCtx.moveTo(a[0], a[1]); uCtx.lineTo(b[0], b[1]); uCtx.stroke();
+}
+uCv.addEventListener("pointerdown", e => {
+  if (!U || !U.notes) return;
+  e.preventDefault(); try { uCv.setPointerCapture(e.pointerId); } catch (err) {}
+  uPen = uPos(e); uStroke(uPen, uPen);
+});
+uCv.addEventListener("pointermove", e => {
+  if (!uPen || !U) return;
+  const p = uPos(e); uStroke(uPen, p); U.ink += Math.hypot(p[0] - uPen[0], p[1] - uPen[1]); uPen = p;
+});
+const uEnd = () => { if (!uPen) return; uPen = null; if (U && U.notes && U.ink > 40) { U.drew = true; uCheck(); } };
+uCv.addEventListener("pointerup", uEnd);
+uCv.addEventListener("pointercancel", uEnd);
+
+// tahta ve rakam tuşlarını bir kez kur
+(() => {
+  const b = $("uBoard");
+  for (let i = 0; i < 9; i++) { const c = document.createElement("div"); c.className = "cell"; c.dataset.i = i; c.setAttribute("role", "button"); b.appendChild(c); }
+  const p = $("uPad");
+  for (let d = 1; d <= 9; d++) { const k = document.createElement("button"); k.className = "key"; k.dataset.d = d; k.innerHTML = `${d}<small></small>`; p.appendChild(k); }
+})();
+
+function openHelp(from) {
+  helpFrom = from;
+  if (from === "game") persistGame();   // oyundan gelindiyse süre durur (sayaç yalnızca oyun ekranında işler), geri dönünce kaldığı yerden sürer
+  uReset(); uRender(); show("help");
+  try { localStorage.setItem(HKEY, "1"); } catch (e) {}
+}
+function closeHelp() {
+  uRun++; U = null;
+  if (helpFrom === "game" && G) { show("game"); renderGame(); }
+  else { renderHome(); show("home"); }
+}
+$("btnHelp").onclick = () => openHelp("home");
+$("hlBack").onclick = closeHelp;
+$("gHelp").onclick = () => { if (G && !G.busy && !modalOpen()) openHelp("game"); };
+document.addEventListener("keydown", e => { if (current === "help" && e.key === "Escape") closeHelp(); });
+
+function openSettings() {
+  const cur = (() => { try { return localStorage.getItem(TKEY) || "auto"; } catch (e) { return "auto"; } })();
+  showModal(`<h3>Ayarlar</h3><div class="lab">Tema</div>
+    <div class="seg" id="seg">
+      <button data-t="auto" class="${cur === "auto" ? "on" : ""}">Otomatik</button>
+      <button data-t="light" class="${cur === "light" ? "on" : ""}">Açık</button>
+      <button data-t="dark" class="${cur === "dark" ? "on" : ""}">Koyu</button>
+    </div>
+    <div class="lab" style="margin-top:14px">Renk paleti</div>${paletteGrid()}`, [{label: "Kapat"}]);
+  $("seg").onclick = e => {
+    const b = e.target.closest("button"); if (!b) return;
+    applyTheme(b.dataset.t);
+    $("seg").querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b));
+  };
+}
+function applyTheme(t) {
+  try { localStorage.setItem(TKEY, t); } catch (e) {}
+  if (t === "auto") document.documentElement.removeAttribute("data-theme");
+  else document.documentElement.setAttribute("data-theme", t);
+  updateThemeBtns();
+  applyPalette(); refreshPalGrid();
+  redrawInk();
+}
+const darkMQ = window.matchMedia("(prefers-color-scheme: dark)");
+function themePref() { try { return localStorage.getItem(TKEY) || "auto"; } catch (e) { return "auto"; } }
+function isDark() {
+  const t = themePref();
+  if (t !== "auto") return t === "dark";
+  const host = document.documentElement.getAttribute("data-theme");   // artifact penceresi temayı kök öğeye yazabilir
+  return host ? host === "dark" : darkMQ.matches;
+}
+function updateThemeBtns() {
+  const dark = isDark();
+  document.querySelectorAll(".themebtn").forEach(b => {
+    b.innerHTML = useIcon(dark ? "i-sun" : "i-moon");
+    b.setAttribute("aria-label", dark ? "Açık temaya geç" : "Koyu temaya geç");
+  });
+}
+document.querySelectorAll(".themebtn").forEach(b => { b.onclick = () => applyTheme(isDark() ? "light" : "dark"); });
+const onThemeChange = () => { updateThemeBtns(); applyPalette(); refreshPalGrid(); try { redrawInk(); } catch (e) {} if (current === "help" && U) uRender(); };
+darkMQ.addEventListener("change", onThemeChange);
+new MutationObserver(onThemeChange).observe(document.documentElement, {attributes: true, attributeFilter: ["data-theme"]});
+(() => { const t = themePref(); if (t !== "auto") document.documentElement.setAttribute("data-theme", t); updateThemeBtns(); })();
+
+/* ---- renk paleti: seçili hücre / aynı rakamlar / satır-sütun / rakam ve buton rengi ---- */
+const PALETTES = [
+  {key: "mavi", name: "Mavi",
+    light: {sel: "#bac6f9", ring: "#3d5afe", same: "#d2dbfb", peer: "#eaedfd", accent: "#3d5afe", accentInk: "#ffffff", user: "#2243c8", ink: "#3d5afe", err: "#c62525", errBg: "#fde1e1"},
+    dark:  {bg: "#151a24", surface: "#1e2430", surface2: "#29303f", line: "rgba(136, 146, 168, 0.34)", lineStrong: "#8892a8", sel: "#48568c", ring: "#8fa2ff", same: "#3b466f", peer: "#2f3855", accent: "#7b8cff", accentInk: "#0d1020", user: "#aab4ff", ink: "#7b8cff", err: "#ff6b6b", errBg: "#4a2227"}},
+  {key: "adacayi", name: "Adaçayı",
+    light: {sel: "#bbd5c8", ring: "#3b7a5b", same: "#d4e4dc", peer: "#eaf2ee", accent: "#3b7a5b", accentInk: "#ffffff", user: "#2e5e46", ink: "#3b7a5b", err: "#ad3b26", errBg: "#f6dad2"},
+    dark:  {bg: "#161c1a", surface: "#1f2725", surface2: "#2a3431", line: "rgba(134, 153, 143, 0.34)", lineStrong: "#86998f", sel: "#476c5a", ring: "#8fcaa8", same: "#3a5649", peer: "#2f423a", accent: "#8fcaa8", accentInk: "#0e1a14", user: "#9bd0ae", ink: "#8fcaa8", err: "#ff7a60", errBg: "#4a2720"}},
+  {key: "sis", name: "Gri-mavi",
+    light: {sel: "#bbcde0", ring: "#4a6a8a", same: "#d3dfeb", peer: "#eaf0f5", accent: "#4a6a8a", accentInk: "#ffffff", user: "#0c5492", ink: "#4a6a8a", err: "#ad3b26", errBg: "#f6dad2"},
+    dark:  {bg: "#161b22", surface: "#1f252d", surface2: "#2a313b", line: "rgba(133, 147, 166, 0.34)", lineStrong: "#8593a6", sel: "#47607c", ring: "#8cb9e3", same: "#3a4d63", peer: "#2f3d4d", accent: "#9db8d4", accentInk: "#0f1620", user: "#8ac3f5", ink: "#9db8d4", err: "#ff7a60", errBg: "#4a2720"}},
+  {key: "kum", name: "Sıcak kum",
+    light: {sel: "#efcebb", ring: "#b5502d", same: "#f5dfd3", peer: "#faf0ea", accent: "#b5502d", accentInk: "#ffffff", user: "#823920", ink: "#b34f2c", err: "#b3243a", errBg: "#f7d6dc"},
+    dark:  {bg: "#1c1815", surface: "#26201b", surface2: "#322a24", line: "rgba(163, 147, 132, 0.34)", lineStrong: "#a39384", sel: "#7d5d42", ring: "#e0a27e", same: "#614936", peer: "#49382b", accent: "#e0a27e", accentInk: "#1d130c", user: "#e7b69c", ink: "#e0a27e", err: "#ff6b78", errBg: "#4a2229"}},
+];
+const PKEY = "sudoku-palet", DEFAULT_PALETTE = "adacayi";
+function palettePref() { try { const p = localStorage.getItem(PKEY); if (PALETTES.some(x => x.key === p)) return p; } catch (e) {} return DEFAULT_PALETTE; }
+function applyPalette() {
+  const p = PALETTES.find(x => x.key === palettePref()), v = isDark() ? p.dark : p.light, s = document.documentElement.style;
+  const map = {sel: "--sel", ring: "--sel-ring", same: "--same", peer: "--peer", accent: "--accent", accentInk: "--accent-ink", user: "--user", ink: "--ink", err: "--err", errBg: "--err-bg"};
+  const surf = {bg: "--bg", surface: "--surface", surface2: "--surface2", line: "--line", lineStrong: "--line-strong"};   // yalnızca koyu modda paletin kendi zemini var
+  for (const k in map) s.setProperty(map[k], v[k]);
+  for (const k in surf) v[k] ? s.setProperty(surf[k], v[k]) : s.removeProperty(surf[k]);
+  try { redrawInk(); } catch (e) {}   // ilk yüklemede çizim katmanı henüz hazır olmayabilir
+}
+function paletteGrid() {
+  const dark = isDark(), cur = palettePref();
+  return `<div class="pals">` + PALETTES.map(p => {
+    const v = dark ? p.dark : p.light;
+    return `<button class="pal${p.key === cur ? " on" : ""}" data-pal="${p.key}" aria-label="${p.name}">
+      <span class="chk">${useIcon("i-check")}</span>${miniGrid(v)}<span class="pn">${p.name}</span></button>`;
+  }).join("") + `</div>`;
+}
+// Palet kartındaki küçük önizleme: seçili hücre, aynı rakamlar, satır/sütun, hazır ve girilmiş rakam
+// cells verilmezse varsayılan vurgu örneği çizilir. Zemin: e boş, p ilişkili, s aynı rakam, x seçili, r hatalı, c çakışan.
+// Rakam türü: g hazır, u girilmiş, w yanlış girilmiş.
+function miniGrid(v, custom) {
+  const cs = getComputedStyle(document.documentElement), css = n => cs.getPropertyValue(n).trim();
+  const surface = v.surface || css("--surface");
+  const bg = {e: surface, p: v.peer, s: v.same, x: v.sel, r: v.errBg, c: v.errBg};
+  const given = css("--given");
+  const cells = custom || [   // 3x3 örnek: ortada seçili hücre, çaprazda aynı rakam, haç şeklinde satır/sütun. [zemin, rakam, tür]
+    ["s", 5, "g"], ["p", 9, "g"], ["e", 3, "g"],
+    ["p", 2, "g"], ["x", 5, "u"], ["p"],
+    ["e"], ["p", 7, "u"], ["e", 4, "g"],
+  ];
+  const ink = t => t === "u" ? v.user : t === "w" ? v.err : given;
+  return `<span class="mg">` + cells.map(([k, d, t]) =>
+    `<i style="background:${bg[k]};color:${ink(t)};font-weight:700` +
+    `${k === "x" || k === "r" ? `;box-shadow:inset 0 0 0 1.5px ${k === "r" ? v.err : v.ring}` : ""}">${d || ""}</i>`).join("") + `</span>`;
+}
+function refreshPalGrid() { const g = document.querySelector("#mCard .pals"); if (g) g.outerHTML = paletteGrid(); }
+function setPalette(key) {
+  try { localStorage.setItem(PKEY, key); } catch (e) {}
+  applyPalette(); refreshPalGrid();
+}
+function openPalette() {
+  showModal(`<h3>Renk paleti</h3><p>Seçtiğin renk tahtaya hemen uygulanır.</p>${paletteGrid()}`, [{label: "Tamam", primary: true}]);
+  $("modal").classList.add("soft");
+}
+$("mCard").addEventListener("click", e => { const b = e.target.closest(".pal"); if (b) setPalette(b.dataset.pal); });
+document.querySelectorAll(".palbtn").forEach(b => { b.innerHTML = useIcon("i-palette"); b.setAttribute("aria-label", "Renk paleti"); b.onclick = openPalette; });
+applyPalette();
+
+/* ================= tüm bölümler ================= */
+let tab = 0;
+function openLevels() {
+  tab = LEVELS[furthest() - 1].di;
+  renderLevels(); show("levels");
+}
+function renderLevels() {
+  const f = furthest();
+  $("tabs").innerHTML = DIFFS.map((d, di) => {
+    const done = LEVELS.filter(l => l.di === di && save.completed[l.n]).length;
+    return `<button class="tab${di === tab ? " on" : ""}" data-di="${di}" style="--c:${d.color}"><b>${d.name}</b><small>${done}/30</small></button>`;
+  }).join("");
+  const d = DIFFS[tab];
+  $("grid30").innerHTML = LEVELS.filter(l => l.di === tab).map(l => {
+    const locked = l.n > f, done = save.completed[l.n], inProg = !!save.games[l.n];
+    const cls = ["lvl", locked ? "locked" : "", done ? "done" : "", l.n === f && !done ? "cur" : ""].join(" ");
+    let inner;
+    if (locked) inner = useIcon("i-lock");
+    else inner = `<span>${l.n}</span>` + (done
+      ? `<span class="stars">${starSvg(done.stars >= 1)}${starSvg(done.stars >= 2)}${starSvg(done.stars >= 3)}</span>` +
+        `<span class="meta">Hata ${done.mistakes ?? "–"}/${d.maxMistakes}</span><span class="meta">İpucu ${done.hints ?? "–"}/${MAX_HINTS}</span>`
+      : "") + (inProg && !done ? `<span class="dot"></span>` : "");
+    return `<button class="${cls}" data-n="${l.n}" style="--c:${d.color}" ${locked ? "disabled" : ""} aria-label="Bölüm ${l.n}${locked ? " kilitli" : ""}">${inner}</button>`;
+  }).join("");
+}
+$("tabs").onclick = e => { const b = e.target.closest(".tab"); if (b) { tab = +b.dataset.di; renderLevels(); } };
+$("grid30").onclick = e => { const b = e.target.closest(".lvl"); if (b && !b.disabled) startLevel(+b.dataset.n, "levels"); };
+$("lvBack").onclick = () => { renderHome(); show("home"); };
+
+/* ================= oyun ================= */
+const COMPLETE_AT = 8;   // en fazla bu kadar boş hücre kalınca "Tamamla" çıkar
+let G = null;
+const val = i => G.given[i] || G.vals[i];
+const isLocked = i => !!G.given[i] || (G.vals[i] !== 0 && G.vals[i] === G.sol[i]);
+const complete = () => G.sol.every((s, i) => G.given[i] || G.vals[i] === s);
+const blocked = () => !G || G.over || G.paused || G.busy || modalOpen();
+const emptyCells = () => { const r = []; for (let i = 0; i < 81; i++) if (!G.given[i] && G.vals[i] !== G.sol[i]) r.push(i); return r; };
+
+function startLevel(n, from) {
+  const lvl = LEVELS[n - 1], s = save.games[n];
+  const wrong = {};   // yanlış girilmiş ve henüz silinmemiş rakamlar: {hücre: rakam}
+  if (s && s.wrong) for (const [i, d] of Object.entries(s.wrong)) if (Number(lvl.puzzle[i]) === 0 && !s.vals[i] && Number(d) !== Number(lvl.solution[i])) wrong[i] = Number(d);
+  G = {
+    n, di: lvl.di, from,
+    given: [...lvl.puzzle].map(Number), sol: [...lvl.solution].map(Number),
+    vals: s ? s.vals.map((v, i) => v === Number(lvl.solution[i]) ? v : 0) : Array(81).fill(0),
+    ink: s && Array.isArray(s.ink) ? s.ink : [],
+    mistakes: s ? s.mistakes : 0, hints: s ? s.hints : 0, seconds: s ? s.seconds : 0,
+    sel: -1, notesMode: false, tool: "pen", tip: false,
+    wrong, wrongTip: false, paused: false, over: false, busy: false, cmpTip: false, undo: [], redo: [],
+  };
+  buildBoard(); show("game"); renderGame();
+}
+function persistGame() {
+  if (!G || G.over) return;
+  save.games[G.n] = {vals: G.vals, wrong: G.wrong, ink: G.ink, mistakes: G.mistakes, hints: G.hints, seconds: G.seconds};
+  persist();
+}
+function leaveGame() {
+  if (G && G.busy) return;
+  persistGame();
+  if (G && G.from === "levels") { renderLevels(); show("levels"); }
+  else { renderHome(); show("home"); }
+}
+$("gBack").onclick = leaveGame;
+
+function buildBoard() {
+  const b = $("board"); b.innerHTML = "";
+  for (let i = 0; i < 81; i++) {
+    const c = document.createElement("div"), r = Math.floor(i / 9), col = i % 9;
+    c.className = "cell" + (col === 2 || col === 5 ? " c3" : "") + (r === 2 || r === 5 ? " r3" : "") + (col === 8 ? " c8" : "") + (r === 8 ? " r8" : "");
+    c.dataset.i = i; c.setAttribute("role", "button");
+    b.appendChild(c);
+  }
+  const pad = $("pad"); pad.innerHTML = "";
+  for (let d = 1; d <= 9; d++) {
+    const k = document.createElement("button");
+    k.className = "key"; k.dataset.d = d; k.innerHTML = `${d}<small></small>`;
+    pad.appendChild(k);
+  }
+}
+$("board").onclick = e => {
+  const c = e.target.closest(".cell"); if (!c || blocked()) return;
+  G.sel = +c.dataset.i; renderGame();
+};
+$("pad").onclick = e => { const k = e.target.closest(".key"); if (k) input(+k.dataset.d); };
+// Tahtanın, rakam tuşlarının ve düğmelerin dışındaki boş alana dokununca seçim kalkar: oyuncu tahtaya genel bakabilir
+document.addEventListener("pointerdown", e => {
+  if (current !== "game" || !G || G.sel < 0 || blocked()) return;
+  if (e.target.closest(".board, .pad, .tools, .dock, button, .modal, .toast")) return;
+  G.sel = -1; renderGame();
+}, true);
+
+function renderGame(shakeIdx = -1) {
+  const d = DIFFS[G.di], max = d.maxMistakes;
+  $("gTitle").textContent = `Bölüm ${G.n}`;
+  const chip = $("gChip"); chip.textContent = d.name; chip.style.setProperty("--c", d.color);
+  const m = $("gMist"); m.textContent = `Hata ${G.mistakes}/${max}`;
+  m.className = "pill" + (G.mistakes >= max - 1 && G.mistakes > 0 ? " warn" : G.mistakes ? " bad" : "");
+  $("gTime").textContent = fmt(G.seconds);
+  $("bHint").textContent = `${G.hints}/${MAX_HINTS}`;
+  $("bNotes").textContent = G.notesMode ? "Açık" : "Kapalı";
+  $("tNotes").classList.toggle("on", G.notesMode);
+  $("tHint").disabled = G.hints >= MAX_HINTS;
+  $("tUndo").disabled = !G.undo.length;
+  $("game").classList.toggle("paused", G.paused);
+  $("ink").classList.toggle("dim", G.paused);
+  $("gPause").setAttribute("aria-label", G.paused ? "Devam et" : "Duraklat");
+  $("gPauseIco").innerHTML = `<use href="#${G.paused ? "i-play" : "i-pause"}"/>`;
+
+  // kenar notları
+  $("inkBar").hidden = !G.notesMode;
+  $("inkPen").classList.toggle("on", G.tool === "pen");
+  $("inkEraser").classList.toggle("on", G.tool === "eraser");
+  document.body.classList.toggle("inking", inkActive());
+
+  // tamamla
+  const left = G.over ? [] : emptyCells();
+  const showCmp = left.length > 0 && left.length <= COMPLETE_AT;
+  $("cmpWrap").hidden = !showCmp;
+  $("btnComplete").disabled = G.busy || G.paused;
+  if (!showCmp) hideCmpTip();
+  else if (!G.cmpTip && !G.busy) { G.cmpTip = true; showCmpTip(); }
+
+  // hatalı hücre seçiliyken de (yanlış) rakamın aynıları vurgulanmaya devam eder
+  const sel = G.sel, selVal = sel < 0 ? 0 : (G.wrong[sel] || val(sel));
+  const peers = sel >= 0 ? new Set(PEERS[sel]) : new Set();
+  // yanlış rakamla çakışan hücreler (aynı satır/sütun/kutudaki aynı rakam): hata silinene kadar hata tonunda kalır
+  const conflicts = new Set();
+  for (const [wi, wd] of Object.entries(G.wrong)) PEERS[wi].forEach(p => { if (val(p) === wd) conflicts.add(p); });
+  const cells = $("board").children;
+  for (let i = 0; i < 81; i++) {
+    const el = cells[i], fl = G.wrong[i] !== undefined, v = fl ? G.wrong[i] : val(i);
+    let cls = el.className.replace(/\b(peer|same|sel|given|user|err|conflict|shake)\b/g, "").replace(/\s+/g, " ").trim();
+    if (conflicts.has(i)) cls += " conflict";
+    if (i === sel) cls += " sel";
+    else if (selVal && v === selVal) cls += " same";
+    else if (peers.has(i)) cls += " peer";
+    if (G.given[i]) cls += " given";
+    else if (fl) cls += " err";
+    else if (G.vals[i]) cls += " user";
+    if (i === shakeIdx) cls += " shake";
+    el.className = cls;
+    el.textContent = v || "";
+    el.setAttribute("aria-label", `Satır ${Math.floor(i / 9) + 1}, sütun ${i % 9 + 1}, ${v ? v + (fl ? ", hatalı" : "") : "boş"}`);
+  }
+  if (shakeIdx >= 0) {   // art arda aynı hatada sallanma animasyonu yeniden oynasın
+    const el = cells[shakeIdx]; el.classList.remove("shake"); void el.offsetWidth; el.classList.add("shake");
+  }
+  // rakam tuşları: kalan adet
+  const placed = Array(10).fill(0);
+  for (let i = 0; i < 81; i++) if (G.given[i] || (G.vals[i] && G.vals[i] === G.sol[i])) placed[G.sol[i]]++;
+  [...$("pad").children].forEach(k => {
+    const rest = 9 - placed[+k.dataset.d];
+    k.disabled = rest <= 0;
+    k.querySelector("small").textContent = rest > 0 ? rest : "";
+  });
+  redrawInk();
+}
+
+/* ---- kenar notları: sudokunun dışındaki boş alanlara serbest çizim ---- */
+const inkCv = $("ink"), inkCtx = inkCv.getContext("2d");
+const PEN_W = 3.2, INK_MAX_POINTS = 8000;
+const inkActive = () => !!G && G.notesMode && !blocked() && current === "game";
+const boardRect = () => $("board").getBoundingClientRect();
+function sizeInk() {
+  const dpr = window.devicePixelRatio || 1;
+  inkCv.width = Math.round(innerWidth * dpr); inkCv.height = Math.round(innerHeight * dpr);
+  inkCv.style.width = innerWidth + "px"; inkCv.style.height = innerHeight + "px";
+  inkCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+let inkRaf = 0;
+function redrawInk() { cancelAnimationFrame(inkRaf); inkRaf = requestAnimationFrame(drawInk); }
+function drawInk() {
+  inkCtx.clearRect(0, 0, innerWidth, innerHeight);
+  if (!G || current !== "game") return;
+  const r = boardRect();
+  if (!r.width) return;
+  inkCtx.save();
+  // sudoku alanını dışarıda bırak: ızgaranın içine hiçbir şey çizilmez
+  inkCtx.beginPath();
+  inkCtx.rect(0, 0, innerWidth, innerHeight);
+  inkCtx.rect(r.left - 1, r.top - 1, r.width + 2, r.height + 2);
+  inkCtx.clip("evenodd");
+  const color = getComputedStyle(document.documentElement).getPropertyValue("--ink").trim() || "#c2410c";
+  inkCtx.strokeStyle = color; inkCtx.fillStyle = color;
+  inkCtx.lineWidth = PEN_W; inkCtx.lineCap = "round"; inkCtx.lineJoin = "round";
+  for (const s of G.ink) {
+    const p = s.map(([x, y]) => [r.left + x * r.width, r.top + y * r.height]);
+    if (p.length === 1) { inkCtx.beginPath(); inkCtx.arc(p[0][0], p[0][1], PEN_W / 2, 0, Math.PI * 2); inkCtx.fill(); continue; }
+    inkCtx.beginPath(); inkCtx.moveTo(p[0][0], p[0][1]);
+    for (let k = 1; k < p.length; k++) inkCtx.lineTo(p[k][0], p[k][1]);
+    inkCtx.stroke();
+  }
+  inkCtx.restore();
+}
+const inBoard = (x, y, r) => x >= r.left - 1 && x <= r.right + 1 && y >= r.top - 1 && y <= r.bottom + 1;
+let inkDown = false, inkStroke = null, inkLast = null;
+function addInkPoint(x, y) {
+  const r = boardRect();
+  if (inBoard(x, y, r)) { inkStroke = null; inkLast = null; return; }   // ızgaraya girince çizgi kopar
+  const total = G.ink.reduce((a, s) => a + s.length, 0);
+  if (total > INK_MAX_POINTS) return;
+  const pts = [];
+  if (inkLast && !inkStroke) inkLast = null;
+  if (inkLast) {   // hızlı çizimde araları doldur
+    const dx = x - inkLast[0], dy = y - inkLast[1], dist = Math.hypot(dx, dy), n = Math.floor(dist / 6);
+    for (let k = 1; k <= n; k++) pts.push([inkLast[0] + dx * k / n, inkLast[1] + dy * k / n]);
+    if (dist < 1.5) return;
+  }
+  pts.push([x, y]);
+  if (!inkStroke) { inkStroke = []; G.ink.push(inkStroke); }
+  for (const [px, py] of pts) {
+    if (inBoard(px, py, r)) { inkStroke = null; break; }
+    inkStroke.push([+((px - r.left) / r.width).toFixed(4), +((py - r.top) / r.height).toFixed(4)]);
+  }
+  inkLast = [x, y];
+  redrawInk();
+}
+function eraseInkAt(x, y) {
+  const r = boardRect(), before = G.ink.length;
+  G.ink = G.ink.filter(s => !s.some(([sx, sy]) => Math.hypot(r.left + sx * r.width - x, r.top + sy * r.height - y) < 16));
+  if (G.ink.length !== before) redrawInk();
+}
+inkCv.addEventListener("pointerdown", e => {
+  if (!inkActive()) return;
+  e.preventDefault();
+  try { inkCv.setPointerCapture(e.pointerId); } catch (err) {}
+  inkDown = true; inkStroke = null; inkLast = null;
+  G.tool === "eraser" ? eraseInkAt(e.clientX, e.clientY) : addInkPoint(e.clientX, e.clientY);
+});
+inkCv.addEventListener("pointermove", e => {
+  if (!inkDown || !inkActive()) return;
+  G.tool === "eraser" ? eraseInkAt(e.clientX, e.clientY) : addInkPoint(e.clientX, e.clientY);
+});
+const inkEnd = () => { if (!inkDown) return; inkDown = false; inkStroke = null; inkLast = null; persistGame(); };
+inkCv.addEventListener("pointerup", inkEnd);
+inkCv.addEventListener("pointercancel", inkEnd);
+window.addEventListener("resize", () => { sizeInk(); redrawInk(); });
+window.addEventListener("scroll", redrawInk, {passive: true});
+sizeInk();
+
+$("inkPen").onclick = () => { G.tool = "pen"; renderGame(); };
+$("inkEraser").onclick = () => { G.tool = "eraser"; renderGame(); };
+$("inkClear").onclick = () => {
+  if (!G.ink.length) { toast("Silinecek not yok"); return; }
+  showModal(`<h3>Notlar silinsin mi?</h3><p>Sudokunun etrafına yazdığın tüm notlar silinecek.</p>`,
+    [{label: "Evet, sil", primary: true, onClick: () => { G.ink = []; persistGame(); renderGame(); }}, {label: "Vazgeç"}]);
+};
+function toggleNotes() {
+  if (!G || G.over || G.busy) return;
+  G.notesMode = !G.notesMode;
+  if (G.notesMode && !G.tip) { G.tip = true; toast("Sudokunun etrafındaki boş alanlara yazabilirsin"); }
+  renderGame();
+}
+
+/* ---- hamleler ---- */
+function snap() {
+  G.undo.push(G.vals.slice());
+  if (G.undo.length > 200) G.undo.shift();
+  G.redo = [];
+}
+function afterMove(shakeIdx = -1) {
+  persistGame(); renderGame(shakeIdx);
+  if (complete()) winLevel();
+}
+function input(d) {
+  if (blocked()) return;
+  const i = G.sel;
+  if (i < 0) { toast("Önce bir hücre seç"); return; }
+  if (isLocked(i)) { toast("Bu hücre zaten dolu"); return; }
+  if (d !== G.sol[i]) { wrongEntry(i, d); return; }
+  delete G.wrong[i];
+  snap(); G.vals[i] = d; afterMove();
+}
+// Yanlış rakam: girildiği anda hata sayılır. Hücrede kırmızı kalır, çakışan hücreler hata tonunda vurgulanır.
+// Oyuncu satır/sütun/kutuya bakıp nedenini anlasın diye kendiliğinden silinmez; Sil ile (ya da yeni bir rakamla) değiştirilir.
+// Aynı yanlış rakama tekrar basılırsa her basış yine hata sayılır ve aynı geri bildirim verilir.
+function wrongEntry(i, d) {
+  const g = G, max = DIFFS[g.di].maxMistakes;
+  g.wrong[i] = d; g.mistakes++;
+  if (g.mistakes >= max) {
+    g.over = true; delete save.games[g.n]; persist(); renderGame(i);
+    setTimeout(() => { if (G === g) failLevel(); }, 700);
+    return;
+  }
+  if (!g.wrongTip) { g.wrongTip = true; toast("Hatalı rakam kırmızı kalır. Sil ile kaldırabilirsin."); }
+  // Çakışan hücre yoksa oyuncu nedenini ekrandan göremez: kısa bir açıklama göster
+  if (!PEERS[i].some(p => val(p) === d)) showInfo("Satır, sütun ve kutuda aynı rakam olmasa bile girdiğin rakam burada doğru olmayabilir.");
+  persistGame(); renderGame(i);
+}
+function erase() {
+  if (blocked()) return;
+  const i = G.sel;
+  if (i >= 0 && G.wrong[i] !== undefined) { delete G.wrong[i]; persistGame(); renderGame(); return; }
+  if (i < 0 || isLocked(i) || !G.vals[i]) return;
+  snap(); G.vals[i] = 0; afterMove();
+}
+function undo() {
+  if (blocked() || !G.undo.length) return;
+  G.redo.push(G.vals.slice()); G.vals = G.undo.pop(); afterMove();
+}
+function redo() {
+  if (blocked() || !G.redo.length) return;
+  G.undo.push(G.vals.slice()); G.vals = G.redo.pop(); afterMove();
+}
+function hint() {
+  if (blocked()) return;
+  if (G.hints >= MAX_HINTS) { toast("İpucu hakkın bitti"); return; }
+  const i = G.sel;
+  if (i < 0) { toast("İpucu için bir hücre seç"); return; }
+  if (isLocked(i)) { toast("Bu hücre zaten dolu"); return; }
+  delete G.wrong[i];
+  snap(); G.vals[i] = G.sol[i]; G.hints++; afterMove();
+}
+function togglePause() { if (G && !G.over && !G.busy && !modalOpen()) { G.paused = !G.paused; renderGame(); } }
+
+/* ---- tamamla: kalan rakamlar ekranın dışından uçarak gelir ---- */
+let cmpTipTimer;
+function showCmpTip() {
+  $("cmpBubble").hidden = false;
+  clearTimeout(cmpTipTimer); cmpTipTimer = setTimeout(hideCmpTip, 8000);
+}
+function hideCmpTip() { clearTimeout(cmpTipTimer); $("cmpBubble").hidden = true; }
+function flyIn(i, digit, done, boardEl = $("board")) {
+  const cellEl = boardEl.children[i], rc = cellEl.getBoundingClientRect();
+  const el = document.createElement("div");
+  el.className = "fly"; el.textContent = digit;
+  Object.assign(el.style, {
+    left: rc.left + rc.width / 2 + "px", top: rc.top + rc.height / 2 + "px",
+    width: rc.width + "px", height: rc.height + "px", fontSize: getComputedStyle(cellEl).fontSize,
+  });
+  document.body.appendChild(el);
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const R = Math.hypot(innerWidth, innerHeight) + 80, a = Math.random() * Math.PI * 2;
+  const sx = Math.cos(a) * R, sy = Math.sin(a) * R, rot = (Math.random() * 2 - 1) * 220;
+  const anim = el.animate([
+    {transform: `translate(-50%,-50%) translate(${sx}px,${sy}px) rotate(${rot}deg) scale(2.4)`, opacity: 1},
+    {transform: "translate(-50%,-50%) translate(0,0) rotate(0deg) scale(1)", opacity: 1},
+  ], {duration: reduce ? 1 : 760, easing: "cubic-bezier(.18,.85,.25,1)", fill: "forwards"});
+  let finished = false;
+  const land = () => { if (finished) return; finished = true; el.remove(); done(); };
+  anim.onfinish = land;
+  setTimeout(land, (reduce ? 1 : 760) + 60);   // sekme kısılırsa da bitiş garanti
+}
+function completeAll() {
+  if (blocked()) return;
+  const cells = emptyCells();
+  if (!cells.length || cells.length > COMPLETE_AT) return;
+  const g = G;
+  hideCmpTip();
+  g.busy = true; g.wrong = {}; g.sel = -1; renderGame();
+  let landed = 0;
+  cells.forEach((i, k) => setTimeout(() => flyIn(i, g.sol[i], () => {
+    g.vals[i] = g.sol[i]; landed++;
+    if (landed < cells.length) { renderGame(); return; }
+    g.busy = false; afterMove();
+  }), k * 170));
+}
+$("tUndo").onclick = undo; $("tErase").onclick = erase;
+$("tNotes").onclick = toggleNotes; $("tHint").onclick = hint;
+$("gPause").onclick = togglePause; $("btnComplete").onclick = completeAll;
+
+/* ---- bitiş ---- */
+/* 3 yıldız: hatasız ve ipucusuz · 2 yıldız: toplam en fazla 1 hata/ipucu · 1 yıldız: daha fazlası. Süre ve "Tamamla" yıldızı etkilemez. */
+function calcStars(g) { const n = (g.mistakes || 0) + (g.hints || 0); return n === 0 ? 3 : n === 1 ? 2 : 1; }
+const runScore = r => r.stars * 100 - ((r.mistakes ?? 50) + (r.hints ?? 50));
+function winLevel() {
+  G.over = true;
+  const stars = calcStars(G), prev = save.completed[G.n];
+  const run = {stars, mistakes: G.mistakes, hints: G.hints, best: G.seconds};
+  const top = prev && runScore(prev) >= runScore(run) ? prev : run;   // en iyi denemeyi sakla
+  save.completed[G.n] = {stars: top.stars, mistakes: top.mistakes, hints: top.hints, best: prev ? Math.min(prev.best, G.seconds) : G.seconds};
+  delete save.games[G.n]; persist();
+  const n = G.n, last = n >= TOTAL, d = DIFFS[G.di];
+  showModal(`
+    <div class="bigstars">${starSvg(stars >= 1)}${starSvg(stars >= 2)}${starSvg(stars >= 3)}</div>
+    <h3>${last ? "Tebrikler!" : "Bölüm tamamlandı!"}</h3>
+    <p>${last ? "Tüm bölümleri bitirdin." : `Bölüm ${n} · ${d.name}`}</p>
+    <div class="facts"><div><b>${fmt(G.seconds)}</b>Süre</div><div><b>${G.mistakes}/${d.maxMistakes}</b>Hata</div><div><b>${G.hints}/${MAX_HINTS}</b>İpucu</div></div>`,
+    last
+      ? [{label: "Tüm Bölümler", primary: true, onClick: openLevels}]
+      : [{label: "Sonraki Bölüm", primary: true, onClick: () => startLevel(n + 1, G.from)},
+         {label: "Tüm Bölümler", onClick: openLevels}]);
+}
+function failLevel() {
+  G.over = true;
+  const n = G.n, from = G.from, d = DIFFS[G.di];
+  delete save.games[n]; persist();
+  showModal(`<div class="bigicon">${useIcon("i-x")}</div>
+    <h3>Hata hakkın bitti</h3>
+    <p>${d.maxMistakes} hatanın hepsini kullandın. Bölüm baştan başlayacak.</p>`,
+    [{label: "Tekrar Dene", primary: true, onClick: () => startLevel(n, from)},
+     {label: "Ana Menü", onClick: () => { renderHome(); show("home"); }}]);
+}
+
+/* ---- süre ---- */
+setInterval(() => {
+  if (!G || G.over || G.paused || G.busy || modalOpen() || current !== "game" || document.hidden) return;
+  G.seconds++; $("gTime").textContent = fmt(G.seconds);
+  if (G.seconds % 5 === 0) persistGame();
+}, 1000);
+window.addEventListener("pagehide", persistGame);
+document.addEventListener("visibilitychange", () => { if (document.hidden) persistGame(); });
+
+/* ---- klavye ---- */
+document.addEventListener("keydown", e => {
+  if (current !== "game" || !G || modalOpen()) return;
+  if (e.key === "Escape") { if (!blocked() && G.sel >= 0) { G.sel = -1; renderGame(); } return; }
+  if (e.key >= "1" && e.key <= "9") { input(+e.key); return; }
+  if (e.key === "Backspace" || e.key === "Delete" || e.key === "0") { erase(); return; }
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "y") { e.preventDefault(); redo(); return; }
+  if (e.key.toLowerCase() === "n") { toggleNotes(); return; }
+  if (e.key.toLowerCase() === "h") { hint(); return; }
+  if (e.key.toLowerCase() === "p") { togglePause(); return; }
+  const mv = {ArrowUp: -9, ArrowDown: 9, ArrowLeft: -1, ArrowRight: 1}[e.key];
+  if (mv && !G.paused) {
+    e.preventDefault();
+    let i = G.sel < 0 ? 40 : G.sel + mv;
+    if (mv === -1 && G.sel % 9 === 0 || mv === 1 && G.sel % 9 === 8) i = G.sel;
+    if (i >= 0 && i < 81) { G.sel = i; renderGame(); }
+  }
+});
+
+renderHome();
+</script>
+</body>
+</html>

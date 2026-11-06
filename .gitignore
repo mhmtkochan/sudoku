@@ -1,0 +1,15 @@
+# Secrets
+signing/
+*.jks
+*.keystore
+keystore.properties
+local.properties
+
+# Build output
+dist/
+build/
+.gradle/
+.idea/
+*.apk
+*.aab
+__pycache__/
