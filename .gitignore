@@ -13,3 +13,11 @@ build/
 *.apk
 *.aab
 __pycache__/
+
+# Desktop (Electron)
+node_modules/
+desktop/app/
+desktop/dist/
+out/
+*.exe
+

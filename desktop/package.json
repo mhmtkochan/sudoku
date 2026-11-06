@@ -1,0 +1,46 @@
+{
+  "name": "sudoku-desktop",
+  "productName": "Sudoku",
+  "version": "1.0.0",
+  "description": "120 bolumlu Turkce Sudoku - Windows masaustu surumu",
+  "author": "mhmtkochan",
+  "private": true,
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win portable --x64"
+  },
+  "devDependencies": {
+    "electron": "45.2.3",
+    "electron-builder": "26.18.0"
+  },
+  "build": {
+    "appId": "com.sudokuoyunu.desktop",
+    "productName": "Sudoku",
+    "copyright": "mhmtkochan",
+    "directories": {
+      "output": "dist",
+      "buildResources": "assets"
+    },
+    "files": [
+      "main.js",
+      "package.json",
+      "app/**",
+      "assets/icon.ico"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "assets/icon.ico",
+      "signAndEditExecutable": true,
+      "forceCodeSigning": false
+    },
+    "portable": {
+      "artifactName": "Sudoku-${version}-portable.exe"
+    }
+  }
+}
